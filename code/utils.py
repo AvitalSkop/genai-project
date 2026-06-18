@@ -22,7 +22,8 @@ from pathlib import Path
 SEED = 42  # fixed seed used everywhere so runs are reproducible
 
 # ---------------------------------------------------------------------------
-# Class taxonomy (canonical order = by how much is on the plate, low -> high)
+# Class taxonomy. The first four are ordered by how much is on the plate
+# (low -> high); `unclassified` is a special trailing class, off that axis.
 # ---------------------------------------------------------------------------
 # The order is fixed so label indices and confusion-matrix axes are stable
 # across notebooks. The index of each class is its position in this list.
@@ -30,24 +31,36 @@ CLASS_NAMES = [
     "clean",               # 0 - pristine, unused plate (no food/crumbs)
     "empty",               # 1 - used plate eaten bare (crumbs/residue)
     "finished_leftovers",  # 2 - small leftovers or garbage (napkin/paper)
-    "semi_full",           # 3 - moderate amount of food
-    "full",                # 4 - full plate of food
+    "full",                # 3 - a moderate-to-full serving (merges old semi_full + full)
+    "unclassified",        # 4 - too degraded to identify (borrows prompts; corrupted in step 03)
 ]
+
+# Classes that have their own prompts. `unclassified` is excluded: it borrows
+# random prompts from these in build_prompts(), and step 03 corrupts those images
+# until the plate state is unidentifiable.
+CONTENT_CLASSES = ["clean", "empty", "finished_leftovers", "full"]
+UNCLASSIFIED = "unclassified"
 CLASS_TO_IDX = {name: i for i, name in enumerate(CLASS_NAMES)}
 IDX_TO_CLASS = {i: name for i, name in enumerate(CLASS_NAMES)}
 
 # Binary decision rule (NON-MONOTONIC by design: a `clean` plate has the least
 # on it yet maps to "do not clear" because it is a freshly set plate).
+# `unclassified` is a third outcome - the image is too degraded to decide, so we
+# abstain ('uncertain') rather than guess; the safe deployment fallback is to
+# NOT auto-clear a plate we cannot assess.
 CLEAR_CLASSES = {"empty", "finished_leftovers"}
-DONT_CLEAR_CLASSES = {"clean", "semi_full", "full"}
+DONT_CLEAR_CLASSES = {"clean", "full"}
+UNCERTAIN_CLASSES = {"unclassified"}
 
 
 def to_binary(class_name: str) -> str:
-    """Map a fine-grained class to the binary action: 'clear' or 'do_not_clear'."""
+    """Map a class to an action: 'clear', 'do_not_clear', or 'uncertain'."""
     if class_name in CLEAR_CLASSES:
         return "clear"
     if class_name in DONT_CLEAR_CLASSES:
         return "do_not_clear"
+    if class_name in UNCERTAIN_CLASSES:
+        return "uncertain"
     raise ValueError(f"Unknown class: {class_name!r}")
 
 
@@ -152,15 +165,14 @@ CLASS_CONTENTS = {
         "a crumpled paper napkin and an empty food wrapper left on the plate",
         "a used napkin and small food scraps left behind on the plate",
     ],
-    "semi_full": [
-        "a moderate amount of {food} covering part of the plate, clearly more than scraps but not full",
-        "a half-eaten plate of {food}, about half of the portion remaining",
-        "a partially eaten serving of {food}, the plate is roughly half covered",
-    ],
+    # `full` now spans moderate -> full (the old semi_full and full classes merged).
     "full": [
         "a full plate piled with a complete fresh portion of {food}",
         "a full, untouched serving of {food} filling the whole plate",
         "a generously plated full meal of {food}, the plate completely covered with food",
+        "a moderate amount of {food} covering part of the plate, clearly more than scraps",
+        "a half-eaten plate of {food}, about half of the portion remaining",
+        "a partially eaten serving of {food}, the plate is roughly half covered",
     ],
 }
 
@@ -206,7 +218,9 @@ def build_prompts(n_per_class: int = 70, seed: int = SEED) -> dict[str, list[str
     """
     rng = random.Random(seed)
     prompts: dict[str, list[str]] = {}
-    for class_name in CLASS_NAMES:
+
+    # 1) Content classes - each gets its own unique, attribute-based prompts.
+    for class_name in CONTENT_CLASSES:
         seen: set[str] = set()
         out: list[str] = []
         attempts = 0
@@ -227,6 +241,14 @@ def build_prompts(n_per_class: int = 70, seed: int = SEED) -> dict[str, list[str
                 seen.add(prompt)
                 out.append(prompt)
         prompts[class_name] = out
+
+    # 2) `unclassified` borrows random prompts from the content classes. The
+    #    images these produce are NORMAL plates; step 03 then corrupts them so
+    #    heavily that the plate state can no longer be identified. This class is
+    #    therefore only meaningful once degradation is applied (see step 03).
+    pool = [p for class_name in CONTENT_CLASSES for p in prompts[class_name]]
+    prompts[UNCLASSIFIED] = rng.sample(pool, n_per_class)
+
     return prompts
 
 

@@ -17,19 +17,19 @@ A complete playbook for the GenAI course final project. Built from the course ru
 | `clean` | A pristine, fresh, **unused** plate — no food, no crumbs, no residue at all | Do not clear |
 | `empty` | A **used** plate eaten bare — only crumbs, sauce smears, or residue, no food | Clear |
 | `finished_leftovers` | Small leftover food, or garbage such as a napkin or paper on the plate | Clear |
-| `semi_full` | A moderate amount of food — more than leftovers, but the plate is not full | Do not clear |
-| `full` | The plate is full of food | Do not clear |
+| `full` | A **moderate-to-full** serving — anything from a half-covered plate to a full one (merges the old `semi_full` + `full`) | Do not clear |
+| `unclassified` | The plate is **too degraded to identify** — you cannot tell whether there is food on it | Uncertain (abstain) |
 
-**Binary decision rule:** `clear` = {`empty`, `finished_leftovers`} · `do not clear` = {`clean`, `semi_full`, `full`}. (If you intend a different mapping, this is the one line to change.)
+**Binary decision rule:** `clear` = {`empty`, `finished_leftovers`} · `do not clear` = {`clean`, `full`} · `unclassified` → **uncertain** (abstain — no automatic action; the safe fallback if a hard binary is forced is *do not clear*, since you should never auto-clear a plate you cannot see). (If you intend a different mapping, this is the one line to change.)
 
-> **The decision boundary is non-monotonic by design.** A `clean` plate has the *least* on it yet maps to **do not clear** (freshly set — the diner is about to eat), while `empty`/`finished_leftovers` map to **clear**, and `semi_full`/`full` go back to **do not clear**. So "clear" is a band in the middle of the food-amount axis, not a simple threshold. This is exactly why the fine-grained 5-class model earns its keep: a binary classifier keyed on "how full is the plate" cannot represent this boundary, but predicting the state first and then applying the rule can. Call this out in the report — it is a clean justification for the fine-grained taxonomy.
+> **The decision boundary is non-monotonic by design.** A `clean` plate has the *least* on it yet maps to **do not clear** (freshly set — the diner is about to eat), while `empty`/`finished_leftovers` map to **clear**, and `full` goes back to **do not clear**. (`unclassified` sits outside this food-amount axis entirely — it's an abstain bucket for unreadable images.) So "clear" is a band in the middle of the food-amount axis, not a simple threshold. This is exactly why the fine-grained 5-class model earns its keep: a binary classifier keyed on "how full is the plate" cannot represent this boundary, but predicting the state first and then applying the rule can. Call this out in the report — it is a clean justification for the fine-grained taxonomy.
 
-> **Why these five work well here.** Each label depends only on the **plate's visible state** — food amount plus any garbage (napkin, paper), and whether the plate is pristine vs used. That is fully visible in a single cropped still image, so there's no reliance on anything outside the frame (no diner, no cutlery position, no previous frame). This is also a friendlier target for the diffusion model: "empty vs some leftovers vs half-full vs full" produces visually distinct images that survive heavy degradation far better than subtle cues would — which makes the synthetic data and the degraded-image evaluation more reliable. The one genuinely subtle pair is **`clean` vs `empty`** — a pristine plate vs a plate eaten bare with faint crumbs/residue — which heavy degradation can blur together; expect (and discuss) that confusion in the matrix.
+> **Why these classes work well here.** Each *content* label (`clean`, `empty`, `finished_leftovers`, `full`) depends only on the **plate's visible state** — food amount plus any garbage (napkin, paper), and whether the plate is pristine vs used. That is fully visible in a single cropped still image, so there's no reliance on anything outside the frame (no diner, no cutlery position, no previous frame). This is also a friendlier target for the diffusion model: "empty vs some leftovers vs half-full vs full" produces visually distinct images that survive heavy degradation far better than subtle cues would — which makes the synthetic data and the degraded-image evaluation more reliable. The one genuinely subtle pair is **`clean` vs `empty`** — a pristine plate vs a plate eaten bare with faint crumbs/residue — which heavy degradation can blur together; expect (and discuss) that confusion in the matrix. The fifth class, **`unclassified`**, is the deliberate opposite: images so corrupted the state is unreadable (see §4.2 / §4.4).
 
 **Why this is novel** (the two angles that justify the project to graders):
 
 1. **Domain-realistic synthetic data.** We don't just generate clean diffusion images — we degrade them to match the noise, blur, low resolution, and lighting of actual restaurant CCTV footage. This is the same paradigm as the "Vision Through Mud" past student project.
-2. **Fine-grained state model, binary decision.** Going beyond binary classification gives the system more interpretable behavior and a much richer error analysis — the confusion matrix tells you which plate states are confused with which, not just one number. It also lets the system represent a **non-monotonic** decision — a `clean` plate and a `full` plate both mean *do not clear*, for opposite reasons — that a single binary food-amount classifier could not.
+2. **Fine-grained state model, binary decision.** Going beyond binary classification gives the system more interpretable behavior and a much richer error analysis — the confusion matrix tells you which plate states are confused with which, not just one number. It also lets the system represent a **non-monotonic** decision — a `clean` plate and a `full` plate both mean *do not clear*, for opposite reasons — and to **abstain** (`unclassified`) when an image is too degraded to call, instead of forcing a wrong clear/don't-clear guess. A single binary food-amount classifier could do neither.
 
 ---
 
@@ -53,7 +53,7 @@ A complete playbook for the GenAI course final project. Built from the course ru
 
 The proposal slide describes the task. The interim and final must answer: **what's the contribution?** The course rubric is explicit that novelty is mandatory. Here's the one-paragraph version to keep on hand:
 
-> Existing image classifiers for tableware are trained on clean, high-resolution food photographs that look nothing like what a restaurant security camera produces. We propose a two-part contribution: (1) a synthetic data generation pipeline that uses SDXL-Turbo plus a CCTV-style degradation module — calibrated to match real footage — to produce training data that survives the synthetic-to-real gap, and (2) a fine-grained 5-class plate-state taxonomy that lets the deployed system give richer signals to restaurant staff than a binary clear/don't-clear decision while preserving a simple lookup rule for the binary case — including a non-monotonic boundary (a `clean` freshly-set plate and a `full` plate both map to *do not clear*) that a plain binary classifier cannot express.
+> Existing image classifiers for tableware are trained on clean, high-resolution food photographs that look nothing like what a restaurant security camera produces. We propose a two-part contribution: (1) a synthetic data generation pipeline that uses SDXL-Turbo plus a CCTV-style degradation module — calibrated to match real footage — to produce training data that survives the synthetic-to-real gap, and (2) a fine-grained 5-class plate-state taxonomy (including an **`unclassified`/abstain** class for unreadable images) that lets the deployed system give richer signals to restaurant staff than a binary clear/don't-clear decision while preserving a simple lookup rule for the binary case — including a non-monotonic boundary (a `clean` freshly-set plate and a `full` plate both map to *do not clear*) that a plain binary classifier cannot express.
 
 Hammer this paragraph in slide 1 of both interim and final.
 
@@ -66,8 +66,8 @@ Target ~250–300 images per class, so roughly:
 - `clean`: 280
 - `empty`: 280
 - `finished_leftovers`: 280
-- `semi_full`: 280
-- `full`: 280
+- `full`: 280  (moderate-to-full; merges the old `semi_full` + `full`)
+- `unclassified`: 280  (borrowed from the other classes, then heavily corrupted in §4.4)
 
 That's ~1,400 images total.
 
@@ -87,8 +87,8 @@ Vary attributes per class:
   - `clean`: "a pristine, freshly set, completely unused clean plate — no food, no crumbs, no sauce, no residue of any kind"
   - `empty`: "a used plate that has been eaten bare — empty of food but with light crumbs, sauce smears, or residue left behind"
   - `finished_leftovers`: "a small amount of leftover food, or a crumpled napkin / piece of paper / wrapper on the plate"
-  - `semi_full`: "a moderate amount of food covering part of the plate — clearly more than scraps, but the plate is not full"
-  - `full`: "a full plate piled with a complete portion of food"
+  - `full`: "a moderate-to-full serving of food — anything from a half-covered plate to a full plate piled with a complete portion" (this single class merges the old `semi_full` and `full`)
+  - `unclassified`: **no prompts of its own** — instead, sample random prompts from the four classes above; the resulting (normal-looking) images are then corrupted beyond recognition in §4.4 so the plate state can't be read
 - **Cutlery state** (vary freely as a *nuisance attribute*, not a class signal): fork and knife on the plate, cutlery beside the plate, or no cutlery visible. Mixing this across all classes stops the model from cheating by keying on cutlery instead of food amount.
 - **Lighting:** dim restaurant lighting, warm tungsten, fluorescent overhead
 
@@ -143,6 +143,8 @@ A.Compose([
 
 Save degraded versions to `data/synthetic_degraded/{class}/` — keep both the undegraded copies (`data/synthetic_clean/`) and the degraded copies so you can run the ablation in §6. (Terminology: "clean" in `synthetic_clean/` means *undegraded* — unrelated to the `clean` plate-state class, so `data/synthetic_clean/clean/` holds the undegraded images of clean plates.)
 
+**The `unclassified` class gets a heavier corruption.** Its images start as normal plates (borrowed prompts, §4.2), so to make them genuinely unreadable, apply a stronger pipeline — much more aggressive downscale (e.g. `scale_min≈0.08`), stronger blur and noise, lower JPEG quality — until you cannot tell whether there is food on the plate. That corruption is what *defines* the class. One consequence for the ablation (§6.3): `unclassified` only exists in the degraded condition; the undegraded `unclassified` images look like ordinary plates, so either exclude the class from the no-degradation arm or expect it to be unlearnable there (itself a neat demonstration of why degradation matters).
+
 ### 4.5 Standard augmentations (for training only)
 On top of degradation, apply standard augmentations during training: `RandomHorizontalFlip`, `RandomRotation(15)`, `ColorJitter`. These are independent of the degradation pipeline.
 
@@ -196,7 +198,7 @@ Report both. The course rubric explicitly asks for "few fine-tuned models vs. fe
 - **Macro-F1** — robust to mild class imbalance
 - **Per-class precision/recall** — interpretation aid
 - **Confusion matrix** — required by spec, must appear in final slides
-- **Binary-derived metrics** — accuracy and F1 of the clear/don't-clear decision after the rule is applied
+- **Binary-derived metrics** — accuracy and F1 of the clear/don't-clear decision after the rule is applied (over the decidable classes; `unclassified` → *uncertain*/abstain, so report it separately — e.g. how often the model correctly abstains — rather than folding it into clear/don't-clear)
 
 ### 6.2 Required comparisons (the "results" slide of the final)
 1. **Model-vs-model:** ViT vs ResNet50 vs DINOv2, both regimes — single table.
@@ -215,7 +217,7 @@ Expected result: the "with degradation" version takes a tiny hit on clean synthe
 Pick the 5–10 worst-misclassified examples from your best model. For each, show:
 - The image
 - Predicted class, true class, confidence
-- A one-sentence hypothesis for why it failed (e.g., "model confused `semi_full` with `full` because the food covered most of the plate and heavy downscaling erased the bare rim that would have signalled a partial portion")
+- A one-sentence hypothesis for why it failed (e.g., "model confused `clean` with `empty` because heavy downscaling turned faint crumbs into noise indistinguishable from a pristine surface")
 
 Put this in `results/error_analysis.csv` and as a slide in the final.
 
@@ -228,7 +230,7 @@ Put this in `results/error_analysis.csv` and as a slide in the final.
 - On submit:
   - Run the image through the best model
   - Show 5 class probabilities as a horizontal bar chart
-  - Show the binary decision (CLEAR / DO NOT CLEAR) in large text with the confidence percentage
+  - Show the decision in large text — **CLEAR** / **DO NOT CLEAR**, or **UNCERTAIN — can't read the plate** when the top class is `unclassified` — with the confidence percentage
   - Show the input image with the degradation pipeline applied next to it (transparency about what the model "saw")
 - Deploy to Hugging Face Spaces (free tier handles this easily)
 
