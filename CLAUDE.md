@@ -21,6 +21,7 @@ GenAI course final project. A classifier that decides whether a restaurant table
 ## Hard technical gotchas
 - **SDXL-Turbo ignores negative prompts.** At its intended `guidance_scale=0.0` there is no classifier-free guidance, so a negative prompt does nothing. Either run Turbo with strong positive prompts + manual culling, or switch to SD 1.5 / SDXL-base at `guidance_scale≈7`, `steps≈25` where negatives work. See Project_Plan_Plate_Status_Detection_3.md §4.3.
 - **GPU-heavy work runs on Colab, not locally.** Image generation (SDXL) and fine-tuning (ViT/ResNet50/DINOv2) are written here but executed in Colab. Don't try to run them on this machine.
+- **Never put "security camera" / "CCTV" / "surveillance" in a diffusion prompt.** Those phrases make the model burn a fake HUD overlay (timestamp, "REC", camera id) into the image — a spurious cue the classifier could learn instead of food amount. Keep diffusion outputs clean; the realistic CCTV degradation is added in `03_degrade_and_augment`, never in the prompt. This also keeps the with/without-degradation ablation valid.
 
 ## Conventions
 - Code comments and docstrings in **English**.

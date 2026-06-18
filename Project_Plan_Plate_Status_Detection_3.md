@@ -76,7 +76,7 @@ Keep classes balanced — you'll thank yourself when reading the confusion matri
 ### 4.2 Prompt generation (LLM step)
 Use Claude or GPT to generate ~60–80 prompts per class. Use an **attribute-based prompt template** (the rubric explicitly praises attribute-based generation):
 
-> "A {plate_color} {plate_shape} plate on a {table_surface}, viewed from {camera_angle}, with {plate_contents}, {cutlery_state}, under {lighting}, photographed by a security camera."
+> "A {plate_color} {plate_shape} plate on a {table_surface}, viewed from {camera_angle}, with {plate_contents}, {cutlery_state}, under {lighting}."
 
 Vary attributes per class:
 - **Plate color:** white porcelain, off-white, beige, blue-rim
@@ -115,6 +115,8 @@ pipe = AutoPipelineForText2Image.from_pretrained(
 - **Switch to SD 1.5 or SDXL base (slower, but negative prompts work):** run at `guidance_scale≈7` with `num_inference_steps≈25`. Then a negative prompt like "multiple plates, hands, face, table edge, watermark, text" actively suppresses contamination. On Colab that's several seconds per image instead of one — still fine for ~1,400 images if you let it run.
 
 For your timeline, start with Turbo + manual culling, and only fall back to SD 1.5 + CFG if you see heavy multi-plate or hands-in-frame contamination.
+
+**Do not put "security camera" / "CCTV" / "surveillance" in the prompt.** It makes the model render a fake HUD overlay (timestamp, "REC", camera id) into the image — a spurious cue the classifier could latch onto instead of food amount. Keep the diffusion output a clean photo; the realistic CCTV look is added by the degradation pipeline in §4.4, **not** the prompt. (If overlays still slip in on a CFG model, suppress them with a negative prompt such as "text, watermark, timestamp, on-screen display, camera UI".)
 
 Save with UUID filenames into `data/synthetic_clean/{class}/`. Inspect a sample grid per class — discard obvious failures manually (this is fine and the dog-breed example does it implicitly).
 

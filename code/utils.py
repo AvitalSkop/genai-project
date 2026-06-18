@@ -1,0 +1,244 @@
+"""
+utils.py - shared, single-source-of-truth constants and helpers for the
+Plate Status Detection project.
+
+Everything that must stay identical across every notebook lives here: the
+random seed, the canonical class list and ordering, the binary decision rule,
+project paths, and the attribute pools + prompt builder used by
+01_generate_prompts.
+
+Import this module from every notebook; never redefine these values ad hoc.
+"""
+
+from __future__ import annotations
+
+import json
+import random
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Reproducibility
+# ---------------------------------------------------------------------------
+SEED = 42  # fixed seed used everywhere so runs are reproducible
+
+# ---------------------------------------------------------------------------
+# Class taxonomy (canonical order = by how much is on the plate, low -> high)
+# ---------------------------------------------------------------------------
+# The order is fixed so label indices and confusion-matrix axes are stable
+# across notebooks. The index of each class is its position in this list.
+CLASS_NAMES = [
+    "clean",               # 0 - pristine, unused plate (no food/crumbs)
+    "empty",               # 1 - used plate eaten bare (crumbs/residue)
+    "finished_leftovers",  # 2 - small leftovers or garbage (napkin/paper)
+    "semi_full",           # 3 - moderate amount of food
+    "full",                # 4 - full plate of food
+]
+CLASS_TO_IDX = {name: i for i, name in enumerate(CLASS_NAMES)}
+IDX_TO_CLASS = {i: name for i, name in enumerate(CLASS_NAMES)}
+
+# Binary decision rule (NON-MONOTONIC by design: a `clean` plate has the least
+# on it yet maps to "do not clear" because it is a freshly set plate).
+CLEAR_CLASSES = {"empty", "finished_leftovers"}
+DONT_CLEAR_CLASSES = {"clean", "semi_full", "full"}
+
+
+def to_binary(class_name: str) -> str:
+    """Map a fine-grained class to the binary action: 'clear' or 'do_not_clear'."""
+    if class_name in CLEAR_CLASSES:
+        return "clear"
+    if class_name in DONT_CLEAR_CLASSES:
+        return "do_not_clear"
+    raise ValueError(f"Unknown class: {class_name!r}")
+
+
+# ---------------------------------------------------------------------------
+# Project paths (resolved relative to the repo root so they work locally and
+# on Colab, as long as this file stays in code/).
+# ---------------------------------------------------------------------------
+ROOT_DIR = Path(__file__).resolve().parent.parent       # repo root (parent of code/)
+DATA_DIR = ROOT_DIR / "data"
+PROMPTS_PATH = DATA_DIR / "prompts.json"
+CLEAN_DIR = DATA_DIR / "synthetic_clean"                # undegraded images, per-class subfolders
+DEGRADED_DIR = DATA_DIR / "synthetic_degraded"          # degraded images, per-class subfolders
+SPLITS_DIR = DATA_DIR / "splits"
+RESULTS_DIR = ROOT_DIR / "results"
+
+# NOTE: the shared train/val/test split function will be added here in step 04
+# so that every notebook imports the exact same split. Do not re-split ad hoc.
+
+
+# ---------------------------------------------------------------------------
+# Prompt generation (used by 01_generate_prompts)
+# ---------------------------------------------------------------------------
+# Nuisance / context attributes - varied across ALL classes so the model keys
+# on food amount, not on these incidental cues.
+#
+# Each pool is a list of (value, weight) pairs; weights are relative. They make
+# the COMMON real case dominant (white-ish, round, top-down) while keeping a
+# diverse minority, so the model performs on typical restaurant plates yet stays
+# robust to rarer ones ("dominant-but-diverse"). Weights are easy to tune - e.g.
+# to match the real_restaurant_cctv reference photos.
+#
+# KEY INVARIANT: these pools are sampled INDEPENDENTLY of the class, so plate
+# appearance carries no label information and cannot become a shortcut.
+
+# Plate style bundles color + material/texture coherently (article baked in).
+PLATE_STYLES = [
+    ("a glossy white porcelain", 30),
+    ("an off-white ceramic", 14),
+    ("a matte cream-colored ceramic", 10),
+    ("a beige stoneware", 9),
+    ("a blue-rimmed white porcelain", 8),
+    ("a dark slate", 6),
+    ("a rustic terracotta", 5),
+    ("a speckled grey stoneware", 5),
+    ("a black matte", 5),
+    ("a patterned ceramic", 3),
+]
+PLATE_SHAPES = [
+    ("round dinner plate", 50),
+    ("oval plate", 12),
+    ("square plate", 12),
+    ("shallow pasta bowl", 13),
+    ("deep dish", 13),
+]
+TABLE_SURFACES = [
+    ("a dark wooden table", 30),
+    ("a white tablecloth", 28),
+    ("a light wooden table", 16),
+    ("a marble table", 14),
+    ("a checkered tablecloth", 12),
+]
+# A ceiling camera almost always looks straight down, so top-down dominates.
+CAMERA_ANGLES = [
+    ("directly top-down", 75),
+    ("a slight overhead angle", 25),
+]
+CUTLERY_STATES = [
+    ("a fork and knife resting on it", 34),
+    ("cutlery laid beside it", 33),
+    ("no cutlery visible", 33),
+]
+LIGHTINGS = [
+    ("dim restaurant lighting", 38),
+    ("warm tungsten light", 34),
+    ("cool fluorescent overhead light", 28),
+]
+
+# Food items used to diversify the food-bearing classes so images do not collapse
+# onto a single dish.
+FOOD_ITEMS = [
+    "pasta with sauce", "rice and vegetables", "a steak with side vegetables",
+    "a green salad", "curry and rice", "grilled chicken and potatoes",
+    "a burger and fries", "noodles", "fish with vegetables", "a portion of stew",
+]
+
+# Per-class content phrasings - THIS is what actually defines the label.
+# "{food}" is filled from FOOD_ITEMS for the food-bearing classes.
+CLASS_CONTENTS = {
+    "clean": [
+        "a pristine, completely unused clean plate with no food and no crumbs at all",
+        "a spotless freshly-set plate, nothing on it, no residue whatsoever",
+        "a brand-new looking spotless clean plate, ready to be served on",
+    ],
+    "empty": [
+        "an empty plate that has been eaten from, bare of food but with light crumbs and sauce smears",
+        "a used plate scraped clean of food, only leftover crumbs and a few sauce streaks remaining",
+        "a finished empty plate with smudges, crumbs and dried sauce residue, no real food left",
+    ],
+    "finished_leftovers": [
+        "a small amount of leftover {food}, just a few scraps remaining on the plate",
+        "a nearly finished plate with only a few small bites of {food} left",
+        "a crumpled paper napkin and an empty food wrapper left on the plate",
+        "a used napkin and small food scraps left behind on the plate",
+    ],
+    "semi_full": [
+        "a moderate amount of {food} covering part of the plate, clearly more than scraps but not full",
+        "a half-eaten plate of {food}, about half of the portion remaining",
+        "a partially eaten serving of {food}, the plate is roughly half covered",
+    ],
+    "full": [
+        "a full plate piled with a complete fresh portion of {food}",
+        "a full, untouched serving of {food} filling the whole plate",
+        "a generously plated full meal of {food}, the plate completely covered with food",
+    ],
+}
+
+# NOTE: deliberately NO "security camera" / "CCTV" / "surveillance" wording.
+# Those phrases make the diffusion model burn a fake HUD overlay (timestamp,
+# "REC", camera id) into the image, which the classifier could then cheat on.
+# We keep the diffusion output a CLEAN photo and add the realistic CCTV
+# degradation (low-res, noise, blur, JPEG) separately and controllably in
+# step 03 - that separation is also what keeps the degradation ablation valid.
+PROMPT_TEMPLATE = (
+    "{style} {shape} on {surface}, viewed from {angle}, "
+    "with {contents}, {cutlery}, under {lighting}. "
+    "A close-up overhead photo of a single plate filling the frame."
+)
+
+
+def _weighted(rng: random.Random, pairs: list[tuple[str, int]]) -> str:
+    """Pick one value from a list of (value, weight) pairs (weights are relative)."""
+    values = [v for v, _ in pairs]
+    weights = [w for _, w in pairs]
+    return rng.choices(values, weights=weights, k=1)[0]
+
+
+def _make_contents(rng: random.Random, class_name: str) -> str:
+    """Pick a content phrasing for a class, filling in a random food where needed."""
+    phrasing = rng.choice(CLASS_CONTENTS[class_name])
+    if "{food}" in phrasing:
+        phrasing = phrasing.format(food=rng.choice(FOOD_ITEMS))
+    return phrasing
+
+
+def build_prompts(n_per_class: int = 70, seed: int = SEED) -> dict[str, list[str]]:
+    """
+    Build attribute-based text-to-image prompts for every class.
+
+    For each class we randomly sample unique combinations of the nuisance
+    attributes (plate, table, angle, cutlery, lighting) plus a class-specific
+    content phrase. Nuisance attributes are varied across every class so the
+    classifier cannot cheat on them.
+
+    Returns a dict {class_name: [prompt, ...]} with n_per_class prompts each.
+    Deterministic for a fixed seed.
+    """
+    rng = random.Random(seed)
+    prompts: dict[str, list[str]] = {}
+    for class_name in CLASS_NAMES:
+        seen: set[str] = set()
+        out: list[str] = []
+        attempts = 0
+        # Cap attempts so we never loop forever if a pool is unexpectedly small.
+        while len(out) < n_per_class and attempts < n_per_class * 50:
+            attempts += 1
+            prompt = PROMPT_TEMPLATE.format(
+                style=_weighted(rng, PLATE_STYLES),
+                shape=_weighted(rng, PLATE_SHAPES),
+                surface=_weighted(rng, TABLE_SURFACES),
+                angle=_weighted(rng, CAMERA_ANGLES),
+                contents=_make_contents(rng, class_name),
+                cutlery=_weighted(rng, CUTLERY_STATES),
+                lighting=_weighted(rng, LIGHTINGS),
+            )
+            prompt = prompt[0].upper() + prompt[1:]  # capitalize the sentence start
+            if prompt not in seen:
+                seen.add(prompt)
+                out.append(prompt)
+        prompts[class_name] = out
+    return prompts
+
+
+def save_prompts(prompts: dict[str, list[str]], path: Path = PROMPTS_PATH) -> None:
+    """Write the prompts dict to JSON (keyed by class), creating data/ if needed."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(prompts, f, indent=2, ensure_ascii=False)
+
+
+def load_prompts(path: Path = PROMPTS_PATH) -> dict[str, list[str]]:
+    """Load the prompts dict from JSON (keyed by class)."""
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
