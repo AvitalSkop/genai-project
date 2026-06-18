@@ -195,21 +195,17 @@ CLASS_CONTENTS = {
         "a wiped-out plate with only faint sauce stains and scattered crumbs, no food remaining",
     ],
     "finished_leftovers": [
-        "a few leftover bites of {food} on an otherwise nearly empty plate",
-        "a nearly finished plate of {food}, only a few small scraps left",
-        "a mostly eaten plate with just a few bites of {food} left in one corner",
-        "a crumpled paper napkin and an empty food wrapper left on the plate",
-        "a used napkin and small food scraps left behind on the plate",
-        "a scrunched tissue and an empty foil container left on the plate",
+    "a few leftover bites of {food} on an otherwise nearly empty plate",
+    "a nearly finished plate of {food}, only a few small scraps left",
+    "a mostly eaten plate with just a few bites of {food} left in one corner",
+    "a nearly empty plate with small remaining pieces of {food}",
     ],
     # `full` now spans moderate -> full (the old semi_full and full classes merged).
     "full": [
-        "a full plate of {food}, a complete fresh portion piled high",
-        "a generous full serving of {food} filling the whole plate",
-        "a plate completely covered with a hearty portion of {food}",
-        "a moderate plate of {food}, clearly more than scraps but not overflowing",
-        "a half-eaten plate of {food}, about half of the portion still remaining",
-        "a partly eaten plate of {food}, roughly half of it still covered with food",
+    "a full plate of {food}, a complete fresh portion piled high",
+    "a generous full serving of {food} filling the whole plate",
+    "a plate completely covered with a hearty portion of {food}",
+    "a plate filled with a large portion of {food}",
     ],
 }
 
