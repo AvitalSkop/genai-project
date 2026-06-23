@@ -75,9 +75,22 @@ CLEAN_DIR = DATA_DIR / "synthetic_clean"                # undegraded images, per
 DEGRADED_DIR = DATA_DIR / "synthetic_degraded"          # degraded images, per-class subfolders
 SPLITS_DIR = DATA_DIR / "splits"
 RESULTS_DIR = ROOT_DIR / "results"
+PILOT_DIR = DATA_DIR / "_pilot"                         # small QA sample written by the step 02 pilot
+MANIFEST_PATH = CLEAN_DIR / "manifest.csv"              # filepath/class/seed/model/prompt of generated images
 
 # NOTE: the shared train/val/test split function will be added here in step 04
 # so that every notebook imports the exact same split. Do not re-split ad hoc.
+
+
+def class_dir(base: Path, class_name: str) -> Path:
+    """Return <base>/<class_name>, creating it if needed.
+
+    Handy for the per-class subfolders of synthetic_clean / synthetic_degraded /
+    the step-02 pilot. Pure-stdlib so importing utils stays dependency-light.
+    """
+    d = Path(base) / class_name
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 # ---------------------------------------------------------------------------

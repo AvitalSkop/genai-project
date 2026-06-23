@@ -222,6 +222,7 @@ __marimo__/
 # (If you decide to version the dataset itself, remove these two lines.)
 data/synthetic_clean/
 data/synthetic_degraded/
+data/_pilot/
 
 # Trained model weights / checkpoints
 *.pt
