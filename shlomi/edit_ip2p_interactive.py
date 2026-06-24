@@ -69,19 +69,24 @@ def reload():
     print("[reload] utils refreshed.", flush=True)
 
 
-def run(n=3, image_guidance=1.5, guidance=7.0, steps=30):
-    """Edit the first n source images; print src+instruction per image; save a comparison grid."""
+def run(n=3, image_guidance=1.5, guidance=7.0, steps=30, prompt=None):
+    """Edit the first n source images; print src+instruction per image; save a comparison grid.
+
+    prompt: if given, use this EXACT instruction for every image (great for testing a short
+            imperative like 'Remove most of the food, leave only a few small scraps.'). If None,
+            use the randomized utils.build_eat_instruction.
+    """
     srcs = sorted(SRC_DIR.glob("*.jpg"))[:n]
     if not srcs:
         print(f"no .jpg sources in {SRC_DIR}")
         return
     print(f"\n=== run: n={len(srcs)}  image_guidance={image_guidance}  guidance={guidance}  "
-          f"steps={steps} ===", flush=True)
+          f"steps={steps}  prompt={'custom' if prompt else 'auto'} ===", flush=True)
     pairs = []
     t0 = time.time()
     for i, src in enumerate(srcs):
         seed = utils.SEED + i
-        instr = utils.build_eat_instruction(random.Random(seed))
+        instr = prompt if prompt else utils.build_eat_instruction(random.Random(seed))
         image = Image.open(src).convert("RGB").resize((args.res, args.res), Image.LANCZOS)
         edited = pipe(
             prompt=instr,
