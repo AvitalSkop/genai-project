@@ -293,6 +293,8 @@ LEFTOVERS_CUTLERY = [
     "A greasy fork has been dropped into the middle of the mess.",
     "A messy knife and fork rest on the plate, streaked with food.",
 ]
+# Only ~half the plates have a fork/knife left in or beside them (per the spec).
+CUTLERY_PROB = 0.5
 # 1-in-4 plates get a used napkin left INSIDE the plate (per the spec).
 NAPKIN_PROB = 0.25
 LEFTOVERS_NAPKIN = [
@@ -300,13 +302,23 @@ LEFTOVERS_NAPKIN = [
     "A used napkin sits scrunched up in the middle of the plate.",
     "A balled-up paper napkin lies on top of the leftovers.",
 ]
+# How MUCH food is left - we want only ~a quarter/fifth, not a full serving. FLUX
+# over-fills when a dish is named, so we quantify the small remainder AND say the
+# plate is mostly empty/bare (a strong spatial cue), both EARLY in the prompt.
+LEFTOVERS_AMOUNT = [
+    "Only about a quarter of the meal is left",
+    "Roughly a fifth of the food remains",
+    "Most of it has already been eaten, only a small portion left",
+    "Just a few bites remain after the meal",
+    "Only a small amount of food is left, the rest already eaten",
+]
 LEFTOVERS_TEMPLATE = (
-    "A detailed, photorealistic photograph of a partially eaten portion of "
-    "{dish} on {style} {shape} on {surface}, viewed from {angle}. More than half of "
-    "it has already been eaten, leaving {remnants} scattered across the plate with "
-    "visible bite marks and broken pieces. The plate is heavily smeared with sauce "
-    "and scattered with crumbs. {cutlery}{napkin} Under {lighting}, the messy "
-    "textures are sharp and cast realistic shadows."
+    "A detailed, photorealistic photograph of a nearly finished plate of {dish} on "
+    "{style} {shape} on {surface}, viewed from {angle}. {amount} - only a small "
+    "cluster of {remnants} sits in one corner, while the rest of the plate is empty "
+    "and bare, smeared with sauce and scattered with crumbs and a few broken pieces. "
+    "{cutlery}{napkin}Under {lighting}, the messy textures are sharp and cast "
+    "realistic shadows."
 )
 
 
@@ -334,15 +346,18 @@ def _build_leftovers(rng: random.Random) -> str:
     Plate/surface/lighting are drawn from the shared pools (class-independent).
     """
     dish, remnants = rng.choice(LEFTOVER_DISHES)
-    napkin = (" " + rng.choice(LEFTOVERS_NAPKIN)) if rng.random() < NAPKIN_PROB else ""
+    # ~half get cutlery, ~1/4 get a napkin; each clause carries its own trailing space.
+    cutlery = (rng.choice(LEFTOVERS_CUTLERY) + " ") if rng.random() < CUTLERY_PROB else ""
+    napkin = (rng.choice(LEFTOVERS_NAPKIN) + " ") if rng.random() < NAPKIN_PROB else ""
     return LEFTOVERS_TEMPLATE.format(
         dish=dish,
         style=_weighted(rng, PLATE_STYLES),
         shape=_weighted(rng, PLATE_SHAPES),
         surface=_weighted(rng, TABLE_SURFACES),
         angle=_weighted(rng, CAMERA_ANGLES),  # same shared pool as the other classes
+        amount=rng.choice(LEFTOVERS_AMOUNT),
         remnants=remnants,
-        cutlery=rng.choice(LEFTOVERS_CUTLERY),
+        cutlery=cutlery,
         napkin=napkin,
         lighting=_weighted(rng, LIGHTINGS),
     )
