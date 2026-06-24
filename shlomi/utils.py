@@ -301,12 +301,12 @@ LEFTOVERS_NAPKIN = [
     "A balled-up paper napkin lies on top of the leftovers.",
 ]
 LEFTOVERS_TEMPLATE = (
-    "A detailed, photorealistic top-down photograph of a partially eaten portion of "
-    "{dish} on {style} {shape} on {surface}. More than half of it has already been "
-    "eaten, leaving {remnants} scattered across the plate with visible bite marks and "
-    "broken pieces. The plate is heavily smeared with sauce and scattered with crumbs. "
-    "{cutlery}{napkin} Under {lighting}, the messy textures are sharp and cast "
-    "realistic shadows."
+    "A detailed, photorealistic photograph of a partially eaten portion of "
+    "{dish} on {style} {shape} on {surface}, viewed from {angle}. More than half of "
+    "it has already been eaten, leaving {remnants} scattered across the plate with "
+    "visible bite marks and broken pieces. The plate is heavily smeared with sauce "
+    "and scattered with crumbs. {cutlery}{napkin} Under {lighting}, the messy "
+    "textures are sharp and cast realistic shadows."
 )
 
 
@@ -340,6 +340,7 @@ def _build_leftovers(rng: random.Random) -> str:
         style=_weighted(rng, PLATE_STYLES),
         shape=_weighted(rng, PLATE_SHAPES),
         surface=_weighted(rng, TABLE_SURFACES),
+        angle=_weighted(rng, CAMERA_ANGLES),  # same shared pool as the other classes
         remnants=remnants,
         cutlery=rng.choice(LEFTOVERS_CUTLERY),
         napkin=napkin,
