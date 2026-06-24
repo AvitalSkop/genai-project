@@ -35,6 +35,9 @@ ap.add_argument("--guidance", type=float, default=3.5, help="guidance_scale (use
 ap.add_argument("--images-per-prompt", type=int, default=1)
 ap.add_argument("--per-class", type=int, default=0,
                 help="cap prompts per class (0 = all 300). e.g. 10 for a quick 50-image pilot")
+ap.add_argument("--skip-unclassified", action="store_true",
+                help="don't generate the 'unclassified' class (it just borrows other prompts; "
+                     "its degraded images are made later in step 03)")
 ap.add_argument("--model", default="black-forest-labs/FLUX.1-dev")
 args = ap.parse_args()
 
@@ -56,6 +59,10 @@ def log(msg: str) -> None:
 def main() -> None:
     prompts = utils.load_prompts()
 
+    # Classes to generate this run (optionally skip the borrow-only 'unclassified').
+    classes = [c for c in utils.CLASS_NAMES
+               if not (args.skip_unclassified and c == utils.UNCLASSIFIED)]
+
     def plist(cls):
         """Prompts for a class, optionally capped by --per-class."""
         return prompts[cls] if args.per_class <= 0 else prompts[cls][:args.per_class]
@@ -64,7 +71,7 @@ def main() -> None:
         """Deterministic per (class, prompt, image) so a pilot and a later full run agree."""
         return utils.SEED + utils.CLASS_TO_IDX[cls] * 1_000_000 + p_i * 100 + k
 
-    total = sum(len(plist(c)) for c in utils.CLASS_NAMES) * args.images_per_prompt
+    total = sum(len(plist(c)) for c in classes) * args.images_per_prompt
 
     log(f"loading {args.model} on GPU {args.gpu} (fp16 + cpu offload) ...")
     pipe = FluxPipeline.from_pretrained(args.model, torch_dtype=torch.float16)
@@ -87,7 +94,7 @@ def main() -> None:
     log("generating ... (one progress line per image below)")
     t0 = time.time()
     made = done = 0
-    for cls in utils.CLASS_NAMES:
+    for cls in classes:
         out_dir = utils.class_dir(utils.CLEAN_DIR, cls)
         for p_i, prompt in enumerate(plist(cls)):
             for k in range(args.images_per_prompt):
@@ -107,7 +114,7 @@ def main() -> None:
     with open(utils.MANIFEST_PATH, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["filepath", "class", "seed", "model", "prompt"])
-        for cls in utils.CLASS_NAMES:
+        for cls in classes:
             for p_i, prompt in enumerate(plist(cls)):
                 for k in range(args.images_per_prompt):
                     fp = utils.CLEAN_DIR / cls / f"{cls}_{p_i:04d}_{k}.jpg"

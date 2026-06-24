@@ -210,24 +210,29 @@ CLASS_CONTENTS = {
         "an empty plate after a meal, just grease marks and a few crumbs, no food",
         "a wiped-out plate with only faint sauce stains and scattered crumbs, no food remaining",
     ],
-    # Lead with the EMPTINESS and use FLUX's "with emphasis on" phrasing (it has no
-    # prompt weights). Describe the scattered REMAINS, not the full dish, or FLUX
-    # renders a full serving of {food} and ignores "a few bites". Strong remnant
-    # words (scraps, smears, crumbs, half-eaten, mostly gone) anchor the small amount.
+    # GOAL: "most of the dish was eaten" - an almost-bare plate, ready to clear.
+    # The failure mode is FLUX drawing a small but COMPLETE serving of {food}. Fix:
+    # make the EMPTY PLATE the subject ("almost entirely empty", "scraped nearly
+    # clean", "most of the food already eaten") and reduce {food} to a tiny
+    # smear/remnant. No prompt weights exist, so we say "most of the food already
+    # eaten" outright. This must read as clearly emptier than `full` (the boundary).
     "finished_leftovers": [
-    "a mostly eaten plate, with emphasis on how little is left: just a few small scraps of {food} pushed to one side, with sauce smears and crumbs across an otherwise empty plate",
-    "the messy remains of a meal, only a couple of leftover bites of {food} among streaks of sauce and scattered crumbs, with most of the food already eaten",
-    "a nearly empty plate after eating, just a small leftover scrap of {food} in one corner, the rest wiped down to sauce stains and crumbs",
-    "a half-eaten plate with only a little {food} remaining in one corner, with emphasis on the empty messy surface, leftover sauce and crumbs",
+    "an almost entirely empty plate at the end of a meal, most of the food already eaten, with only a tiny smear of {food}, a few crumbs and sauce streaks left in one corner",
+    "a plate scraped nearly clean, just a single small leftover bite of {food} remaining among smudges of dried sauce, with the rest of the meal already eaten",
+    "a mostly bare plate after eating, only a small remnant of {food} and scattered crumbs left, clearly almost finished and ready to be cleared",
+    "a largely empty plate, the meal nearly done and most of it eaten, with just a little leftover {food} pushed to one side and sauce smears across the plate",
     ],
-    # `full` spans moderate -> full (the old semi_full and full classes merged).
-    # Add "casually/unevenly served" so the food looks real and homestyle, not the
-    # over-symmetrical studio plating FLUX defaults to.
+    # `full` spans MODERATE -> full (old semi_full + full merged) and is "do not
+    # clear". Mix complete portions with meals-in-progress that still have PLENTY
+    # of food left (so they stay clearly fuller than finished_leftovers). Keep the
+    # casual/uneven wording so plating looks real, not studio-symmetrical.
     "full": [
     "a full plate of {food}, a complete fresh portion, casually served and a bit uneven",
     "a generous serving of {food} piled unevenly across the whole plate, plated homestyle and slightly messy",
     "a plate heaped with a large helping of {food}, sauce splashed naturally, not neatly arranged",
-    "a plate filled with a hearty portion of {food}, casually served so it looks real and unstaged",
+    "a half-eaten plate of {food} with a substantial amount still left, the meal clearly still in progress and far from finished",
+    "a plate of {food} partway through the meal, some already eaten but plenty of food still remaining",
+    "a moderately full plate of {food}, a normal portion with just a couple of bites taken, most of the meal still there",
     ],
 }
 
