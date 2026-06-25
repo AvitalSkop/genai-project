@@ -152,14 +152,14 @@ TABLE_SURFACES = [
     ("a glass table", 3),
 ]
 # Real restaurant cameras are often wall/corner-mounted, not dead-center overhead, so
-# we want variety: straight top-down dominant (~45%), the rest tilted up to ~30 degrees
-# off vertical. Phrased descriptively (high overhead angle, looking down, N degrees from
-# straight above) so FLUX renders the tilt without a HUD/number.
+# we want variety: straight top-down dominant (~45%), the rest tilted moderately. We use
+# QUALITATIVE tilt words (slight / moderate) rather than degree NUMBERS - FLUX reads them
+# more reliably and there is no risk of a stray number being rendered into the image.
 CAMERA_ANGLES = [
     ("directly top-down, straight above the plate", 48),
-    ("a near top-down view, only slightly tilted", 22),
-    ("a high overhead angle looking down at the plate, about 20 degrees from straight above", 16),
-    ("a high overhead angle looking down at the plate, about 30 degrees from straight above", 14),
+    ("an almost top-down view, only very slightly tilted", 22),
+    ("a high overhead angle, looking down at the plate at a slight tilt", 16),
+    ("a high overhead angle, looking down at the plate at a moderate tilt", 14),
 ]
 CUTLERY_STATES = [
     ("a fork and knife resting on it", 25),
