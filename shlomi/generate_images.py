@@ -133,20 +133,22 @@ def main() -> None:
                 eta_min = rate * (total - done) / 60
                 log(f"{done}/{total}  [{cls}]  {rate:.0f}s/img  ETA ~{eta_min:.0f} min")
 
-    # Manifest (rebuilt from the same deterministic loop; robust to resumes).
+    # Manifest: scan ALL class folders present in OUT_DIR (not just this run's classes),
+    # so several runs into the same folder accumulate into one complete manifest.
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     rows = 0
     with open(MANIFEST, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["filepath", "class", "seed", "model", "prompt"])
-        for cls in classes:
-            for p_i, prompt in enumerate(plist(cls)):
-                for k in range(args.images_per_prompt):
-                    fp = OUT_DIR / cls / f"{cls}_{p_i:04d}_{k}.jpg"
-                    if fp.exists():
-                        w.writerow([_rel(fp), cls,
-                                    seed_for(cls, p_i, k), args.model, prompt])
-                        rows += 1
+        for cls in utils.CLASS_NAMES:
+            cdir = OUT_DIR / cls
+            if not cdir.is_dir():
+                continue
+            for fp in sorted(cdir.glob(f"{cls}_*.jpg")):
+                p_i, k = (int(x) for x in fp.stem.split("_")[-2:])
+                prompt = prompts[cls][p_i] if p_i < len(prompts[cls]) else ""
+                w.writerow([_rel(fp), cls, seed_for(cls, p_i, k), args.model, prompt])
+                rows += 1
 
     log(f"DONE. {made} new images this run | {rows} total on disk | "
         f"elapsed {(time.time() - t0) / 60:.0f} min | manifest -> {MANIFEST}")
