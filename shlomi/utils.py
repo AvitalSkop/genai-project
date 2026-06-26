@@ -186,18 +186,41 @@ LIGHTINGS = [
 # every phrasing, e.g. "a plate of {food}" / "a few bites of {food}". Many cuisines
 # and dish types for maximum visual variety.
 FOOD_ITEMS = [
+    # Italian / pasta
     "pasta with tomato sauce", "spaghetti bolognese", "creamy fettuccine", "lasagna",
-    "pizza", "mushroom risotto", "mac and cheese",
-    "fried rice", "noodles with vegetables", "ramen", "pad thai", "sushi",
-    "dumplings", "dim sum", "stir-fried vegetables and rice",
-    "chicken curry with rice", "butter chicken with naan", "lentil dahl",
-    "burger and fries", "fish and chips", "grilled steak and mashed potatoes",
-    "roast chicken and vegetables", "grilled salmon and asparagus", "shrimp and rice",
-    "Greek salad", "caesar salad", "mixed green salad", "fruit salad",
-    "vegetable soup", "tomato soup",
+    "mushroom risotto", "mac and cheese", "gnocchi with pesto", "ravioli",
+    "penne arrabbiata", "eggplant parmesan",
+    # pizza / bread
+    "pizza", "margherita pizza", "calzone", "garlic bread and pasta",
+    # Asian noodles / rice / mains
+    "fried rice", "noodles with vegetables", "chow mein", "ramen", "pad thai", "pho",
+    "stir-fried vegetables and rice", "sweet and sour chicken", "beef and broccoli",
+    "teriyaki chicken with rice", "katsu curry", "bibimbap",
+    # Asian small plates
+    "sushi", "dumplings", "dim sum", "gyoza", "spring rolls",
+    # Indian
+    "chicken curry with rice", "butter chicken with naan", "lentil dahl", "biryani",
+    "palak paneer", "chana masala", "tandoori chicken",
+    # Middle Eastern / Mediterranean
     "hummus and pita", "falafel and salad", "shawarma and rice", "beef kebab and rice",
-    "tacos", "beef burrito", "nachos",
+    "shakshuka", "stuffed grape leaves", "moussaka", "paella",
+    # Mexican
+    "tacos", "beef burrito", "nachos", "enchiladas", "quesadilla", "chili con carne",
+    # American mains
+    "burger and fries", "cheeseburger and fries", "fish and chips",
+    "grilled steak and mashed potatoes", "roast chicken and vegetables",
+    "grilled salmon and asparagus", "shrimp and rice", "fried chicken and waffles",
+    "bbq ribs", "meatloaf and mashed potatoes",
+    # stews / comfort
+    "beef stew", "shepherd's pie", "beef stroganoff", "schnitzel and potatoes",
+    "pot roast", "chicken pot pie",
+    # salads
+    "Greek salad", "caesar salad", "mixed green salad", "cobb salad", "fruit salad",
+    # soups
+    "vegetable soup", "tomato soup", "minestrone soup",
+    # breakfast
     "pancakes with syrup", "scrambled eggs and toast", "omelette and salad",
+    "full english breakfast",
 ]
 
 # Leftover-friendly foods for `finished_leftovers` ONLY. Error analysis showed solid /
@@ -205,11 +228,37 @@ FOOD_ITEMS = [
 # as FULL servings - you can't render "a tiny smear of a steak". Saucy / amorphous /
 # scrappy foods render believably as a small remnant, so we restrict this class to them.
 LEFTOVER_FOODS = [
+    # pasta sauces
     "tomato pasta sauce", "bolognese sauce", "creamy white pasta sauce", "cheese sauce",
-    "curry sauce", "lentil dahl", "butter chicken sauce", "gravy", "salsa", "hummus",
-    "guacamole", "refried beans", "baked beans", "mashed potato", "scrambled egg",
-    "tomato soup", "vegetable soup", "ramen broth",
-    "fried rice", "caesar salad", "greek salad", "nachos with melted cheese",
+    "alfredo sauce", "marinara sauce", "pesto sauce", "arrabbiata sauce",
+    # curry / Indian sauces
+    "curry sauce", "butter chicken sauce", "tikka masala sauce", "korma sauce",
+    "lentil dahl", "vindaloo sauce", "chana masala sauce",
+    # Asian sauces
+    "teriyaki sauce", "sweet and sour sauce", "hoisin sauce", "black bean sauce",
+    "satay peanut sauce", "sweet chilli sauce",
+    # gravies / savory sauces
+    "gravy", "brown gravy", "mushroom sauce", "peppercorn sauce", "white wine sauce",
+    "bbq sauce",
+    # condiments / dressings
+    "ketchup", "mustard", "mayonnaise", "ranch dressing", "caesar dressing",
+    "vinaigrette", "tartar sauce", "sweet chilli dip",
+    # dips / pastes
+    "salsa", "guacamole", "hummus", "baba ganoush", "tzatziki", "tahini", "aioli",
+    # beans / stews
+    "refried beans", "baked beans", "chickpea stew", "chili con carne", "goulash",
+    "beef stew gravy", "black bean stew", "ratatouille", "shakshuka",
+    # mashes / amorphous
+    "mashed potato", "mashed sweet potato", "polenta", "grits", "creamed spinach",
+    "scrambled egg", "risotto",
+    # soups
+    "tomato soup", "vegetable soup", "lentil soup", "minestrone soup", "mushroom soup",
+    "pumpkin soup", "french onion soup", "ramen broth", "miso soup", "clam chowder",
+    # grainy / scrappy
+    "fried rice", "rice pilaf", "couscous", "quinoa salad", "tabbouleh",
+    "caesar salad", "greek salad", "coleslaw",
+    # sweet
+    "custard", "chocolate sauce", "syrup", "porridge",
 ]
 
 # Per-class content phrasings - THIS is what actually defines the label.
@@ -243,9 +292,9 @@ CLASS_CONTENTS = {
     # portion (80% over-filled), so it is removed. {food} comes from LEFTOVER_FOODS only.
     "finished_leftovers": [
         "an almost entirely empty plate at the end of a meal, most of the food already eaten, with only a tiny smear of {food}, a few crumbs and sauce streaks left in one corner",
-        "a plate scraped nearly clean, with just a smear of {food} and a few scattered crumbs left, the rest of the meal already eaten",
-        "a mostly bare plate after eating, only faint scraps and a smear of {food} remaining among streaks of dried sauce",
-        "a nearly empty plate, the meal finished, with just a small smear of {food} and a few crumbs left in one corner",
+        "a plate scraped nearly clean, with just a few scraps of {food} and scattered crumbs left, the rest of the meal already eaten",
+        "a mostly bare plate after eating, only a faint smear of {food} and a few crumbs remaining among dried sauce streaks",
+        "a nearly empty plate, the meal finished, with just a small bit of {food} and some crumbs left in one corner",
     ],
     # `full` spans MODERATE -> full (old semi_full + full merged) and is "do not
     # clear". Mix complete portions with meals-in-progress that still have PLENTY of
