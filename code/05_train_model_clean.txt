@@ -1,0 +1,195 @@
+!pip install torch torchvision matplotlib scikit-learn transformers
+
+import torch
+from torchvision import datasets, transforms, models
+from torch.utils.data import DataLoader
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+base_dir = "/content/drive/MyDrive/genai_project/data/split"
+
+train_dir = f"{base_dir}/train"
+val_dir   = f"{base_dir}/val"
+test_dir  = f"{base_dir}/test"
+
+real_test_dir = "/content/drive/MyDrive/genai_project/data/real_test"
+
+train_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3),
+    transforms.ToTensor(),
+])
+
+test_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
+
+train_dataset = datasets.ImageFolder(train_dir, transform=train_transform)
+val_dataset   = datasets.ImageFolder(val_dir, transform=test_transform)
+test_dataset  = datasets.ImageFolder(test_dir, transform=test_transform)
+
+real_dataset = datasets.ImageFolder(real_test_dir, transform=test_transform)
+
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+val_loader   = DataLoader(val_dataset, batch_size=16)
+test_loader  = DataLoader(test_dataset, batch_size=16)
+real_loader  = DataLoader(real_dataset, batch_size=16)
+
+print("Classes:", train_dataset.classes)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model = models.resnet18(pretrained=True)
+model.fc = nn.Linear(model.fc.in_features, len(train_dataset.classes))
+model = model.to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
+
+def train_epoch(model, loader):
+    model.train()
+    correct = 0
+
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(x)
+        loss = criterion(outputs, y)
+
+        loss.backward()
+        optimizer.step()
+
+        correct += (outputs.argmax(1) == y).sum().item()
+
+    return correct / len(loader.dataset)
+
+
+def eval_model(model, loader):
+    model.eval()
+    correct = 0
+
+    with torch.no_grad():
+        for x, y in loader:
+            x, y = x.to(device), y.to(device)
+            outputs = model(x)
+
+            correct += (outputs.argmax(1) == y).sum().item()
+
+    return correct / len(loader.dataset)
+
+epochs = 10
+
+for epoch in range(epochs):
+    train_acc = train_epoch(model, train_loader)
+    val_acc   = eval_model(model, val_loader)
+
+    print(f"\nEpoch {epoch+1}")
+    print(f"Train Acc: {train_acc:.3f}")
+    print(f"Val Acc:   {val_acc:.3f}")
+
+synthetic_acc = eval_model(model, test_loader)
+print(f"\n🧪 Synthetic Test Accuracy: {synthetic_acc:.3f}")
+
+real_acc = eval_model(model, real_loader)
+print(f"\n🔥 Real Test Accuracy: {real_acc:.3f}")
+
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+def get_predictions(model, loader):
+    model.eval()
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+            outputs = model(x)
+            preds = outputs.argmax(1).cpu().numpy()
+
+            all_preds.extend(preds)
+            all_labels.extend(y.numpy())
+
+    return np.array(all_labels), np.array(all_preds)
+
+y_true, y_pred = get_predictions(model, test_loader)
+
+cm = confusion_matrix(y_true, y_pred)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=test_dataset.classes
+)
+
+disp.plot(cmap="Blues")
+plt.title("Confusion Matrix - Synthetic Test")
+plt.show()
+
+y_true, y_pred = get_predictions(model, real_loader)
+
+cm = confusion_matrix(y_true, y_pred)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=real_dataset.classes
+)
+
+disp.plot(cmap="Blues")
+plt.title("Confusion Matrix - Real Test")
+plt.show()
+
+from transformers import CLIPProcessor, CLIPModel
+from PIL import Image
+
+clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+labels_text = [
+    "a clean empty plate",
+    "an empty plate with crumbs and stains",
+    "a plate with a few leftover bites of food",
+    "a full plate of food",
+    # "an unrecognizable plate with noise or distortion"
+]
+
+def clip_predict(image):
+    inputs = processor(
+        text=labels_text,
+        images=image,
+        return_tensors="pt",
+        padding=True
+    ).to(device)
+
+    outputs = clip_model(**inputs)
+    probs = outputs.logits_per_image.softmax(dim=1)
+
+    return probs.argmax().item()
+
+
+def evaluate_clip(loader):
+    correct = 0
+    total = 0
+
+    for x, y in loader:
+        for i in range(len(x)):
+            image = transforms.ToPILImage()(x[i])
+            pred = clip_predict(image)
+
+            if pred == y[i].item():
+                correct += 1
+
+            total += 1
+
+    return correct / total
+
+
+clip_acc = evaluate_clip(real_loader)
+
+print(f"\n🤖 CLIP Accuracy (REAL DATA): {clip_acc:.3f}")
