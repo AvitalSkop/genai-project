@@ -50,7 +50,8 @@ IDX_TO_CLASS = {i: name for i, name in enumerate(CLASS_NAMES)}
 # `unclassified` is a third outcome - the image is too degraded to decide, so we
 # abstain ('uncertain') rather than guess; the safe deployment fallback is to
 # NOT auto-clear a plate we cannot assess.
-CLEAR_CLASSES = {"empty", "finished_leftovers"}
+# `finished` is the 3-class consolidation of `empty` + `finished_leftovers` (the meal is over -> clear).
+CLEAR_CLASSES = {"empty", "finished_leftovers", "finished"}
 DONT_CLEAR_CLASSES = {"clean", "full"}
 UNCERTAIN_CLASSES = {"unclassified"}
 
