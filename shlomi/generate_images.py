@@ -3,8 +3,8 @@
 
 Designed for long unattended runs (nohup / background). Resumable (skips images
 already on disk) and reproducible (deterministic per-image seeds). Reads prompts
-from shlomi/data/prompts.json via the local utils.py and writes undegraded images
-to shlomi/data/synthetic_clean/{class}/ plus a manifest.csv.
+from shlomi/data/prompts.json via the local utils.py and writes undegraded images to a fresh
+versioned folder shlomi/data/Diff_DataSet_vN/{class}/ (never overwriting old data) plus a manifest.csv.
 
 Quick pilot (10 images per class = 50 total):
     nohup /home/benshise/my_new_project/.venv/bin/python shlomi/generate_images.py \
@@ -42,8 +42,9 @@ ap.add_argument("--classes", nargs="+", default=None, metavar="CLASS",
                 help="only generate these classes (e.g. --classes empty finished_leftovers). "
                      "Default: all. Order still follows CLASS_NAMES.")
 ap.add_argument("--out", default=None,
-                help="output base folder (default: shlomi/data/synthetic_clean). Use a new folder "
-                     "to keep a previous set intact, e.g. shlomi/data/synthetic_clean_v2.")
+                help="output base folder. Default: a NEW versioned folder shlomi/data/Diff_DataSet_vN "
+                     "(auto-incremented) so existing data is never overwritten. Pass an explicit path "
+                     "to resume into / add to a specific run.")
 ap.add_argument("--model", default="black-forest-labs/FLUX.1-dev")
 args = ap.parse_args()
 
@@ -57,8 +58,9 @@ from diffusers import FluxPipeline  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import utils                       # noqa: E402
 
-# Output base: default to the shared synthetic_clean, or a custom --out folder.
-OUT_DIR = Path(args.out).resolve() if args.out else utils.CLEAN_DIR
+# Output base: by default a FRESH versioned folder (Diff_DataSet_v1, _v2, ...) so an existing
+# curated dataset is never overwritten; or a custom --out folder (e.g. to resume into a specific run).
+OUT_DIR = Path(args.out).resolve() if args.out else utils.next_versioned_dir()
 MANIFEST = OUT_DIR / "manifest.csv"
 
 

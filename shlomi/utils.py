@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -74,7 +75,11 @@ ROOT_DIR = Path(__file__).resolve().parent              # the shlomi/ workspace 
 # its own data location WITHOUT editing any notebook cell. Defaults to shlomi/data/ locally.
 DATA_DIR = Path(os.environ.get("PLATE_DATA_ROOT", ROOT_DIR / "data"))
 PROMPTS_PATH = DATA_DIR / "prompts.json"
-CLEAN_DIR = DATA_DIR / "synthetic_clean"                # undegraded images, per-class subfolders
+# Base name of the curated undegraded dataset. Training (step 03) reads CLEAN_DIR; NEW generation
+# runs go to fresh versioned folders (Diff_DataSet_v1, _v2, ...) via next_versioned_dir(), so the
+# curated set is never overwritten.
+DATASET_BASE = "Diff_DataSet"
+CLEAN_DIR = DATA_DIR / DATASET_BASE                     # undegraded images, per-class subfolders
 DEGRADED_DIR = DATA_DIR / "synthetic_degraded"          # degraded images, per-class subfolders
 SPLITS_DIR = DATA_DIR / "splits"
 RESULTS_DIR = ROOT_DIR / "results"
@@ -94,6 +99,28 @@ def class_dir(base: Path, class_name: str) -> Path:
     d = Path(base) / class_name
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def next_versioned_dir(base_name: str = DATASET_BASE, root: Path | None = None) -> Path:
+    """Return the next free versioned output folder so a generation run never overwrites old data.
+
+    Scans <root> (default DATA_DIR) for folders named ``<base_name>`` or ``<base_name>_v<N>`` and
+    returns ``<root>/<base_name>_v<i>`` where ``i`` = (highest existing index) + 1 (the bare
+    ``<base_name>`` counts as index 0). If nothing matching exists yet, returns the bare
+    ``<root>/<base_name>``. The folder itself is NOT created here - callers create it on first save.
+
+    Example (with Diff_DataSet already present):  Diff_DataSet_v1 -> Diff_DataSet_v2 -> ...
+    """
+    root = Path(root) if root is not None else DATA_DIR
+    root.mkdir(parents=True, exist_ok=True)
+    pattern = re.compile(rf"^{re.escape(base_name)}(?:_v(\d+))?$")
+    max_i = -1
+    for d in root.iterdir():
+        if d.is_dir():
+            m = pattern.match(d.name)
+            if m:
+                max_i = max(max_i, int(m.group(1)) if m.group(1) else 0)
+    return root / (base_name if max_i < 0 else f"{base_name}_v{max_i + 1}")
 
 
 # ---------------------------------------------------------------------------
