@@ -49,7 +49,7 @@ Classes:
 - Full (plate with food)
 
 <p align="center">
-  <img src="/home/dsi/skopavi/Project/genai_project/genai-project/Images/data_examples.jpeg" width="900">
+  <img src="Images/data_examples.jpeg" width="900">
 </p>
 
 ---
@@ -101,13 +101,13 @@ Pipeline steps:
 ### ResNet18
 
 <p align="center">
-  <img src="/home/dsi/skopavi/Project/genai_project/genai-project/Images/resnet18_results.png" width="900">
+  <img src="Images/resnet18_results.png" width="900">
 </p>
 
 ### ResNet50
 
 <p align="center">
-  <img src="/home/dsi/skopavi/Project/genai_project/genai-project/Images/resnet50_results.png" width="900">
+  <img src="Images/resnet50_results.png" width="900">
 </p>
 
 ---
